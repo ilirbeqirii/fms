@@ -1,7 +1,10 @@
+import BSON from "bson";
 import * as express from "express";
 import { Request, Response } from 'express';
 import { body, Result, ValidationChain, ValidationError, validationResult } from 'express-validator';
 import Controller from "models/controller.interface";
+import { Db } from "mongodb";
+import MongoDbConnection from "../db/connection";
 import Menu from "../models/menu.model";
 
 interface MenuActions {
@@ -29,13 +32,22 @@ class MenuController implements Controller {
     private initRoutes(): void {
         this.router.get('/', this.getMenus);
         this.router.get('/:id', this.getMenuById);
-        this.router.get('/delete/:id', this.deleteMenu);
-        this.router.put('/update', this.validateBody('update'), this.updateMenu);
-        this.router.post('/create', this.validateBody('create'), this.createMenu);
+        this.router.delete('/:id', this.deleteMenu);
+        this.router.put('/:id', this.validateBody('update'), this.updateMenu);
+        this.router.post('/', this.validateBody('create'), this.createMenu);
     }
 
     private getMenus = (req: Request, res: Response) => {
-        res.send(menus);
+        const dbConnection: Db = MongoDbConnection.getDb();
+
+        dbConnection.collection('menus')
+            .find({})
+            .limit(50)
+            .toArray()
+            .then(
+                result => res.json(result),
+                err => res.status(400).send("Error fetching menus")
+            )
     }
 
     private getMenuById = (req: Request, res: Response) => {
@@ -45,13 +57,15 @@ class MenuController implements Controller {
             res.status(400).end();
         }
 
-        const menuToReturn: Menu = menus.find((menu: Menu) => menu.id == menuId);
+        const dbConnection: Db = MongoDbConnection.getDb();
+        const listingQuery = { _id: new BSON.ObjectID(menuId) };
 
-        if ((menuToReturn)) {
-            res.send(menuToReturn);
-        } else {
-            res.status(404).end();
-        }
+        dbConnection.collection('menus')
+            .findOne(listingQuery)
+            .then(
+                (result) => res.status(200).send(result),
+                (err) => res.status(400).send(`Error getting menu with id ${listingQuery._id}`)
+            );
     }
 
     private createMenu = (req: Request, res: Response) => {
@@ -63,9 +77,14 @@ class MenuController implements Controller {
 
         const menu: Menu = req.body as Menu;
 
-        menus.push(menu);
+        const dbConnection: Db = MongoDbConnection.getDb();
 
-        res.status(200).end();
+        dbConnection.collection('menus')
+            .insertOne(menu)
+            .then(
+                () => res.status(204).send(),
+                err => res.status(400).send("Error creating menu!")
+            );
     }
 
     private updateMenu = (req: Request, res: Response) => {
@@ -75,15 +94,27 @@ class MenuController implements Controller {
             return res.status(422).json({ errors: result.array() });
         }
 
+        const menuId: string = req.params['id'];
+
+        if (!menuId) {
+            res.status(400).send('id is not provided!');
+        }
+
         const menuToUpdate: Menu = req.body as Menu;
 
-        menus.forEach((menu: Menu) => {
-            if (menu.id == menuToUpdate.id) {
-                menu = Object.assign({}, menuToUpdate);
-            }
-        });
+        const dbConnection: Db = MongoDbConnection.getDb();
+        const listingQuery = { _id: new BSON.ObjectID(menuId) };
 
-        res.status(200).end();
+
+        dbConnection.collection('menus')
+            .updateOne(
+                listingQuery,
+                { $set: menuToUpdate }
+            )
+            .then(
+                (data) => res.status(200).send(),
+                err => res.status(400).send(`Error updating menu with id ${listingQuery._id}!`)
+            );
     }
 
     private deleteMenu = (req: Request, res: Response) => {
@@ -93,15 +124,15 @@ class MenuController implements Controller {
             res.status(400).end();
         }
 
-        const menuIndex: number = menus.findIndex((menu: Menu) => menu.id !== menuId);
+        const dbConnection: Db = MongoDbConnection.getDb();
+        const listingQuery = { _id: new BSON.ObjectID(menuId) };
 
-        if (!menuIndex) {
-            res.status(404).end();
-        }
-
-        menus.splice(menuIndex, 1);
-
-        res.status(200).end();
+        dbConnection.collection('menus')
+            .deleteOne(listingQuery)
+            .then(
+                () => res.status(200).send(),
+                err => res.status(400).send(`Error deleting menu with id ${listingQuery._id}!`)
+            );
     }
 
     private validateBody<T extends keyof MenuActions>(type: T): ValidationChain[] {
