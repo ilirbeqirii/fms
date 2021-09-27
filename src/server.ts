@@ -1,14 +1,18 @@
 import * as bodyParser from 'body-parser';
-import MongoDbConnection from './db/connection';
+import cors from 'cors';
+import dotenv from 'dotenv';
 import App from './app';
 import AuthController from './controllers/auth.controller';
 import HomeController from './controllers/home.controller';
 import MenuItemController from './controllers/menu-item.controller';
 import MenuController from './controllers/menu.controller';
 import ProtectedController from './controllers/protected.controller';
+import MongoDbConnection from './db/connection';
 
-require('dotenv').config({ path: "./config.env" });
-var cors = require('cors')
+dotenv.config({ path: "./config.env" })
+
+// require('dotenv').config();
+// var cors = require('cors')
 
 
 const app = new App({
