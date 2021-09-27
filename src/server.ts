@@ -8,6 +8,7 @@ import MenuController from './controllers/menu.controller';
 import ProtectedController from './controllers/protected.controller';
 
 require('dotenv').config({ path: "./config.env" });
+var cors = require('cors')
 
 
 const app = new App({
@@ -20,6 +21,7 @@ const app = new App({
         new ProtectedController()
     ],
     middleWares: [
+        cors(),
         bodyParser.json(),
         bodyParser.urlencoded({ extended: true }),
     ]

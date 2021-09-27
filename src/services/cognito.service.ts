@@ -44,7 +44,7 @@ export default class CognitoService {
         (error) => {
           console.error('User signup failed!' + error.message);
 
-          return false;
+          throw new Error(error.message);
         }
       );
   }
@@ -71,7 +71,7 @@ export default class CognitoService {
         (error) => {
           console.error('User signin failed!' + error.message);
 
-          return false;
+          throw new Error(error.message);
         }
       );
   }
@@ -95,7 +95,7 @@ export default class CognitoService {
         (error) => {
           console.error('User Account Confirm  failed!' + error.message);
 
-          return false;
+          throw new Error(error.message);
         }
       );
   }
